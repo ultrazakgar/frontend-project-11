@@ -1,0 +1,33 @@
+{
+  "name": "@hexlet/code",
+  "description": "[![Actions Status](https://github.com/ultrazakgar/frontend-project-11/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/ultrazakgar/frontend-project-11/actions)",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@eslint/css": "^0.14.1",
+    "@eslint/js": "^9.24.0",
+    "@html-eslint/eslint-plugin": "^0.57.1",
+    "@html-eslint/parser": "^0.57.1",
+    "@stylistic/eslint-plugin": "^5.9.0",
+    "@types/eslint-config-prettier": "^6.11.3",
+    "eslint": "^9.39.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^16.0.0",
+    "prettier": "^3.8.1",
+    "sass": "^1.97.3",
+    "stylelint": "^17.4.0",
+    "stylelint-config-standard-scss": "^17.0.0",
+    "vite": "^6.3.1"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "stylelint-scss": "^7.0.0"
+  }
+}
