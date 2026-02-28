@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
-    "stylelint-scss": "^7.0.0"
+    "stylelint-scss": "^7.0.0",
+    "yup": "^1.7.1"
   }
 }
