@@ -16,7 +16,7 @@
                     <p>Начните читать RSS уже сегодня</p>
                     <form id="rss-form">
                         <div class="mb-3">
-                            <label for="rss-input" class="form-label" data-i18n="rssLabel">Ссылка RSS</label>
+                            <label for="rss-input" class="form-label">Ссылка RSS</label>
                             <input 
                                 type="url" 
                                 class="form-control" 
@@ -24,10 +24,11 @@
                                 name="rss"
                                 placeholder="https://example.com/rss"
                                 autofocus
+                                aria-label="url"
                             >
                             <div id="rss-feedback" class="invalid-feedback"></div>
                         </div>
-                        <button type="submit" id="rss-submit" class="btn btn-primary" data-i18n="addButton">Добавить</button>
+                        <button type="submit" id="rss-submit" class="btn btn-primary">Добавить</button>
                     </form>
                 </div>
             </div>
@@ -59,8 +60,8 @@
                 </div>
                 <div class="modal-body" id="modal-description"></div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="closeButton">Закрыть</button>
-                    <a href="#" id="modal-full-link" class="btn btn-primary" target="_blank" data-i18n="readFullButton">Читать полностью</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <a href="#" id="modal-full-link" class="btn btn-primary" target="_blank">Читать полностью</a>
                 </div>
             </div>
         </div>
