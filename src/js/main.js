@@ -133,8 +133,8 @@ const addFeed = (url) => {
     .then(({ feed, posts }) => {
       state.feeds = [...state.feeds, feed]
 
-      const newPosts = posts.filter((post) =>
-        !state.posts.some((existing) => existing.link === post.link),
+      const newPosts = posts.filter(post =>
+        !state.posts.some(existing => existing.link === post.link),
       )
       state.posts = [...state.posts, ...newPosts]
 
@@ -170,9 +170,9 @@ const addFeed = (url) => {
 // ========== POLLING UPDATES ==========
 const updateFeedPosts = (feedUrl) => {
   return getRssContent(feedUrl)
-    .then(({ posts }) => {
+    .then({ posts } => {
       const newPosts = posts.filter((post) =>
-        !state.posts.some((existing) => existing.link === post.link),
+        !state.posts.some(existing => existing.link === post.link),
       )
       if (newPosts.length > 0) {
         state.posts = [...state.posts, ...newPosts]
@@ -190,7 +190,7 @@ const scheduleUpdates = () => {
       return
     }
 
-    const feedUrls = state.feeds.map((feed) => feed.url)
+    const feedUrls = state.feeds.map(feed => feed.url)
     Promise.all(feedUrls.map(updateFeedPosts))
       .finally(() => {
         setTimeout(checkAllFeeds, 5000)
@@ -231,7 +231,7 @@ const renderFeeds = () => {
         <h2>${i18next.t('feedsTitle')}</h2>
       </div>
       <div class="card-body">
-        ${state.feeds.map((feed) => `
+        ${state.feeds.map(feed => `
           <div class="mb-3">
             <h3>${escapeHtml(feed.title)}</h3>
             <p>${escapeHtml(feed.description)}</p>
@@ -260,7 +260,7 @@ const renderPosts = () => {
       </div>
       <div class="card-body">
         <ul class="list-group">
-          ${state.posts.map((post) => `
+          ${state.posts.map(post => `
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <a href="${escapeHtml(post.link)}"
                  target="_blank"
@@ -326,7 +326,7 @@ const renderPosts = () => {
         }
 
         backdrop?.addEventListener('click', closeModal)
-        modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation())
+        modalElement.querySelector('.modal-content')?.addEventListener('click', e => e.stopPropagation())
       }
     })
   })
@@ -403,7 +403,7 @@ const initForm = () => {
       return
     }
 
-    if (state.feeds.some((feed) => feed.url === url)) {
+    if (state.feeds.some(feed => feed.url === url)) {
       setError('duplicate')
       return
     }
