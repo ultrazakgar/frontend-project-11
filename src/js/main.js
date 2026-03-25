@@ -43,18 +43,11 @@ yup.setLocale({
   }
 });
 
-// ========== STATE (Valtio) ==========
+// ========== STATE ==========
 const state = proxy({
   feeds: [],
   posts: [],
   readPostIds: new Set(),
-  loading: false,
-  error: null,
-  form: {
-    value: '',
-    isValid: true,
-    errorKey: null
-  }
 });
 
 // ========== HELPERS ==========
@@ -66,16 +59,12 @@ const parseRss = (xmlString, feedUrl) => {
   
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
-    const error = new Error('invalidRss');
-    error.key = 'invalidRss';
-    throw error;
+    throw { key: 'invalidRss' };
   }
   
   const channel = doc.querySelector('channel');
   if (!channel) {
-    const error = new Error('invalidRss');
-    error.key = 'invalidRss';
-    throw error;
+    throw { key: 'invalidRss' };
   }
   
   const title = channel.querySelector('title')?.textContent || '';
@@ -91,12 +80,7 @@ const parseRss = (xmlString, feedUrl) => {
   }));
   
   return {
-    feed: {
-      id: feedUrl,
-      title,
-      description,
-      url: feedUrl
-    },
+    feed: { id: feedUrl, title, description, url: feedUrl },
     posts
   };
 };
@@ -107,71 +91,62 @@ const getRssContent = (url) => {
   
   return axios.get(`${proxyUrl}?url=${encodedUrl}&disableCache=true`)
     .then(response => {
-      if (!response.data || !response.data.contents) {
-        const error = new Error('invalidRss');
-        error.key = 'invalidRss';
-        throw error;
-      }
+      if (!response.data?.contents) throw { key: 'invalidRss' };
       return parseRss(response.data.contents, url);
     })
-    .catch(error => {
-      if (error.key === 'invalidRss') {
-        throw error;
-      }
-      const networkError = new Error('networkError');
-      networkError.key = 'networkError';
-      throw networkError;
+    .catch(() => {
+      throw { key: 'networkError' };
     });
 };
 
-// ========== UPDATE FEEDS ==========
+// ========== VALIDATION ==========
+const isValidUrl = (url) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// ========== ADD FEED ==========
 const addFeed = (url) => {
-  state.loading = true;
-  state.error = null;
-  
   return getRssContent(url)
     .then(({ feed, posts }) => {
       state.feeds = [...state.feeds, feed];
-      
       const newPosts = posts.filter(post => 
         !state.posts.some(existing => existing.link === post.link)
       );
       state.posts = [...state.posts, ...newPosts];
       
-      state.loading = false;
-      state.form.value = '';
-      state.form.isValid = true;
-      state.form.errorKey = null;
-      
-      const feedbackDiv = document.querySelector('.feedback');
-      if (feedbackDiv) {
-        feedbackDiv.textContent = i18next.t('success');
-        feedbackDiv.classList.remove('invalid-feedback');
-        feedbackDiv.classList.add('text-success');
+      // Show success
+      const feedback = document.querySelector('.feedback');
+      if (feedback) {
+        feedback.textContent = i18next.t('success');
+        feedback.classList.add('text-success');
+        feedback.classList.remove('invalid-feedback');
+        setTimeout(() => {
+          if (feedback.textContent === i18next.t('success')) {
+            feedback.textContent = '';
+            feedback.classList.remove('text-success');
+          }
+        }, 3000);
       }
-    })
-    .catch(err => {
-      state.loading = false;
-      state.form.isValid = false;
-      state.form.errorKey = err.key || 'networkError';
-      throw err;
     });
 };
 
-// ========== POLLING UPDATES ==========
+// ========== POLLING ==========
 const updateFeedPosts = (feedUrl) => {
   return getRssContent(feedUrl)
     .then(({ posts }) => {
       const newPosts = posts.filter(post => 
         !state.posts.some(existing => existing.link === post.link)
       );
-      if (newPosts.length > 0) {
+      if (newPosts.length) {
         state.posts = [...state.posts, ...newPosts];
       }
     })
-    .catch(err => {
-      console.error(`Error updating feed ${feedUrl}:`, err);
-    });
+    .catch(err => console.error('Update error:', err));
 };
 
 const scheduleUpdates = () => {
@@ -180,31 +155,21 @@ const scheduleUpdates = () => {
       setTimeout(checkAllFeeds, 5000);
       return;
     }
-    
-    const feedUrls = state.feeds.map(feed => feed.url);
-    Promise.all(feedUrls.map(updateFeedPosts))
-      .finally(() => {
-        setTimeout(checkAllFeeds, 5000);
-      });
+    Promise.all(state.feeds.map(feed => updateFeedPosts(feed.url)))
+      .finally(() => setTimeout(checkAllFeeds, 5000));
   };
-  
   setTimeout(checkAllFeeds, 5000);
 };
 
-// ========== MARK POST AS READ ==========
-const markPostAsRead = (postId) => {
-  state.readPostIds.add(postId);
-};
-
-// ========== RENDER FUNCTIONS ==========
+// ========== RENDER ==========
 const escapeHtml = (str) => {
   if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
 };
 
 const renderFeeds = () => {
@@ -216,7 +181,7 @@ const renderFeeds = () => {
     return;
   }
   
-  const feedsHtml = `
+  container.innerHTML = `
     <div class="card border-primary mb-3">
       <div class="card-header bg-primary text-white">
         <h2>${i18next.t('feedsTitle')}</h2>
@@ -231,8 +196,6 @@ const renderFeeds = () => {
       </div>
     </div>
   `;
-  
-  container.innerHTML = feedsHtml;
 };
 
 const renderPosts = () => {
@@ -244,7 +207,7 @@ const renderPosts = () => {
     return;
   }
   
-  const postsHtml = `
+  container.innerHTML = `
     <div class="card border-primary">
       <div class="card-header bg-primary text-white">
         <h2>${i18next.t('postsTitle')}</h2>
@@ -253,17 +216,15 @@ const renderPosts = () => {
         <ul class="list-group">
           ${state.posts.map(post => `
             <li class="list-group-item d-flex justify-content-between align-items-center">
-              <a href="${escapeHtml(post.link)}" 
-                 target="_blank" 
+              <a href="${escapeHtml(post.link)}" target="_blank" 
                  class="${state.readPostIds.has(post.id) ? 'fw-normal' : 'fw-bold'}">
                 ${escapeHtml(post.title)}
               </a>
-              <button 
-                class="btn btn-sm btn-outline-primary view-post-btn" 
-                data-post-id="${post.id}"
-                data-post-title="${escapeHtml(post.title)}"
-                data-post-description="${escapeHtml(post.description)}"
-                data-post-link="${escapeHtml(post.link)}">
+              <button class="btn btn-sm btn-outline-primary view-post-btn" 
+                      data-id="${post.id}"
+                      data-title="${escapeHtml(post.title)}"
+                      data-description="${escapeHtml(post.description)}"
+                      data-link="${escapeHtml(post.link)}">
                 ${i18next.t('viewButton')}
               </button>
             </li>
@@ -273,57 +234,49 @@ const renderPosts = () => {
     </div>
   `;
   
-  container.innerHTML = postsHtml;
-  
+  // Attach modal handlers
   document.querySelectorAll('.view-post-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const postId = btn.dataset.postId;
-      const title = btn.dataset.postTitle;
-      const description = btn.dataset.postDescription;
-      const link = btn.dataset.postLink;
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const title = btn.dataset.title;
+      const description = btn.dataset.description;
+      const link = btn.dataset.link;
       
-      markPostAsRead(postId);
+      state.readPostIds.add(id);
       renderPosts();
       
-      const modalElement = document.getElementById('modal');
-      if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
+      const modalEl = document.getElementById('modal');
+      if (modalEl) {
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
+        const modal = new bootstrap.Modal(modalEl);
         modal.show();
       }
     });
   });
 };
 
-const setError = (errorKey) => {
+// ========== UI HELPERS ==========
+const showError = (key) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
-  
-  const message = i18next.t(errorKey);
-  
   if (feedback) {
-    feedback.textContent = message;
+    feedback.textContent = i18next.t(key);
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
   }
-  if (input) {
-    input.classList.add('is-invalid');
-  }
+  if (input) input.classList.add('is-invalid');
 };
 
-const clearFeedback = () => {
+const clearError = () => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
-  
   if (feedback) {
     feedback.textContent = '';
     feedback.classList.remove('invalid-feedback', 'text-success');
   }
-  if (input) {
-    input.classList.remove('is-invalid');
-  }
+  if (input) input.classList.remove('is-invalid');
 };
 
 // ========== FORM HANDLER ==========
@@ -333,82 +286,53 @@ const initForm = () => {
   
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    
-    clearFeedback();
+    clearError();
     
     const url = input.value.trim();
     
-    // 1. Check for empty
+    // Empty check
     if (!url) {
-      setError('empty');
+      showError('empty');
       return;
     }
     
-    // 2. Check if URL is valid using Yup synchronously
-    let isValidUrl = false;
-    try {
-      yup.string().url().validateSync(url);
-      isValidUrl = true;
-    } catch (err) {
-      isValidUrl = false;
-    }
-    
-    if (!isValidUrl) {
-      setError('invalidUrl');
+    // URL format check
+    if (!isValidUrl(url)) {
+      showError('invalidUrl');
       return;
     }
     
-    // 3. Check for duplicate
-    const isDuplicate = state.feeds.some(feed => feed.url === url);
-    if (isDuplicate) {
-      setError('duplicate');
+    // Duplicate check
+    if (state.feeds.some(feed => feed.url === url)) {
+      showError('duplicate');
       return;
     }
     
-    // 4. Add feed
+    // Add feed
     addFeed(url)
       .then(() => {
-        clearFeedback();
+        clearError();
         renderFeeds();
         renderPosts();
         input.value = '';
         input.focus();
-        
-        const feedbackDiv = document.querySelector('.feedback');
-        if (feedbackDiv) {
-          feedbackDiv.textContent = i18next.t('success');
-          feedbackDiv.classList.add('text-success');
-        }
-        
-        setTimeout(() => {
-          if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
-            feedbackDiv.textContent = '';
-            feedbackDiv.classList.remove('text-success');
-          }
-        }, 3000);
       })
       .catch(err => {
-        setError(err.key);
+        showError(err.key || 'networkError');
       });
   });
   
-  input.addEventListener('input', () => {
-    clearFeedback();
-  });
+  input.addEventListener('input', clearError);
 };
 
-// ========== INITIALIZE ==========
+// ========== INIT ==========
 document.addEventListener('DOMContentLoaded', () => {
   initForm();
   renderFeeds();
   renderPosts();
-  
   subscribe(state, () => {
     renderFeeds();
     renderPosts();
   });
-  
   scheduleUpdates();
-  
-  window.state = state;
 });
