@@ -172,6 +172,14 @@ const addFeed = (url) => {
         feedbackDiv.textContent = i18next.t('success');
         feedbackDiv.classList.remove('invalid-feedback');
         feedbackDiv.classList.add('text-success');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          if (feedbackDiv.textContent === i18next.t('success')) {
+            feedbackDiv.textContent = '';
+            feedbackDiv.classList.remove('text-success');
+          }
+        }, 3000);
       }
     })
     .catch(err => {
@@ -309,7 +317,7 @@ const renderPosts = () => {
       markPostAsRead(postId);
       renderPosts();
       
-      const modalElement = document.getElementById('post-modal');
+      const modalElement = document.getElementById('modal');
       const modal = new bootstrap.Modal(modalElement);
       document.querySelector('#modal-title').textContent = title;
       document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
@@ -332,19 +340,9 @@ const renderFormError = () => {
     }
   } else {
     input.classList.remove('is-invalid');
-    if (feedback) {
-      if (feedback.textContent === i18next.t('success')) {
-        // Keep success message for a bit longer
-        setTimeout(() => {
-          if (feedback.textContent === i18next.t('success')) {
-            feedback.textContent = '';
-            feedback.classList.remove('text-success');
-          }
-        }, 3000);
-      } else {
-        feedback.textContent = '';
-        feedback.classList.remove('invalid-feedback', 'text-success');
-      }
+    if (feedback && !feedback.classList.contains('text-success')) {
+      feedback.textContent = '';
+      feedback.classList.remove('invalid-feedback');
     }
   }
 };
