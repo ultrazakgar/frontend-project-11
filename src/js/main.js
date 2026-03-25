@@ -137,16 +137,17 @@ const validateUrl = (url, existingFeeds) => {
       return true;
     })
     .catch(err => {
-      // If it's duplicate error
+      console.log('Validation error:', err);
       if (err.key === 'duplicate') {
         throw { key: 'duplicate' };
       }
-      // If it's Yup validation error
+      if (err.name === 'ValidationError') {
+        throw { key: 'invalidUrl' };
+      }
       if (err.errors && err.errors[0]) {
         const errorKey = err.errors[0].key || 'invalidUrl';
         throw { key: errorKey };
       }
-      // Any other error - treat as invalid URL
       throw { key: 'invalidUrl' };
     });
 };
@@ -170,7 +171,6 @@ const addFeed = (url) => {
       state.form.isValid = true;
       state.form.errorKey = null;
       
-      // Show success message
       const feedbackDiv = document.querySelector('.feedback');
       if (feedbackDiv) {
         feedbackDiv.textContent = i18next.t('success');
@@ -315,16 +315,13 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        // Make sure Bootstrap is loaded
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-          const modal = new bootstrap.Modal(modalElement);
-          document.querySelector('#modal-title').textContent = title;
-          document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
-          document.querySelector('#modal-full-link').href = link;
-          modal.show();
-        } else {
-          console.error('Bootstrap Modal not available');
-        }
+        const modal = new bootstrap.Modal(modalElement);
+        document.querySelector('#modal-title').textContent = title;
+        document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
+        document.querySelector('#modal-full-link').href = link;
+        modal.show();
+      } else {
+        console.error('Modal element not found');
       }
     });
   });
@@ -334,8 +331,11 @@ const setError = (errorKey) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
   
+  const message = i18next.t(errorKey);
+  console.log('Setting error:', errorKey, message);
+  
   if (feedback) {
-    feedback.textContent = i18next.t(errorKey);
+    feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
   }
@@ -365,7 +365,6 @@ const initForm = () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    // Clear previous feedback
     clearFeedback();
     
     const url = input.value.trim();
@@ -383,14 +382,12 @@ const initForm = () => {
         input.value = '';
         input.focus();
         
-        // Show success message
         const feedbackDiv = document.querySelector('.feedback');
         if (feedbackDiv) {
           feedbackDiv.textContent = i18next.t('success');
           feedbackDiv.classList.add('text-success');
         }
         
-        // Clear success after 3 seconds
         setTimeout(() => {
           if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
             feedbackDiv.textContent = '';
@@ -399,6 +396,7 @@ const initForm = () => {
         }, 3000);
       })
       .catch(err => {
+        console.log('Caught error in submit:', err);
         setError(err.key);
       });
   });
