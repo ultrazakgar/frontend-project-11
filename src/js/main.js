@@ -110,17 +110,12 @@ const addFeed = (url) => {
       );
       state.posts = [...state.posts, ...newPosts];
       
+      // Show success message
       const feedback = document.querySelector('.feedback');
       if (feedback) {
         feedback.textContent = i18next.t('success');
         feedback.classList.add('text-success');
         feedback.classList.remove('invalid-feedback');
-        setTimeout(() => {
-          if (feedback.textContent === i18next.t('success')) {
-            feedback.textContent = '';
-            feedback.classList.remove('text-success');
-          }
-        }, 3000);
       }
     });
 };
@@ -250,22 +245,32 @@ const renderPosts = () => {
 const showError = (key) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
+  const message = i18next.t(key);
+  
   if (feedback) {
-    feedback.textContent = i18next.t(key);
+    feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
   }
-  if (input) input.classList.add('is-invalid');
+  if (input) {
+    input.classList.add('is-invalid');
+  }
+  
+  // Also log to console for debugging
+  console.log('Error shown:', key, message);
 };
 
 const clearError = () => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
+  
   if (feedback) {
     feedback.textContent = '';
     feedback.classList.remove('invalid-feedback', 'text-success');
   }
-  if (input) input.classList.remove('is-invalid');
+  if (input) {
+    input.classList.remove('is-invalid');
+  }
 };
 
 // ========== FORM HANDLER ==========
@@ -279,30 +284,33 @@ const initForm = () => {
     
     const url = input.value.trim();
     
+    // Empty URL
     if (!url) {
       showError('empty');
       return;
     }
     
-    // URL validation using yup
-    let isValid = false;
+    // Validate URL format
+    let isValidUrl = false;
     try {
       yup.string().url().validateSync(url);
-      isValid = true;
+      isValidUrl = true;
     } catch (err) {
-      isValid = false;
+      isValidUrl = false;
     }
     
-    if (!isValid) {
+    if (!isValidUrl) {
       showError('invalidUrl');
       return;
     }
     
+    // Check duplicate
     if (state.feeds.some(feed => feed.url === url)) {
       showError('duplicate');
       return;
     }
     
+    // Add feed
     addFeed(url)
       .then(() => {
         clearError();
@@ -310,6 +318,19 @@ const initForm = () => {
         renderPosts();
         input.value = '';
         input.focus();
+        
+        // Show success message (will be cleared after 3 seconds)
+        const feedback = document.querySelector('.feedback');
+        if (feedback) {
+          feedback.textContent = i18next.t('success');
+          feedback.classList.add('text-success');
+          setTimeout(() => {
+            if (feedback.textContent === i18next.t('success')) {
+              feedback.textContent = '';
+              feedback.classList.remove('text-success');
+            }
+          }, 3000);
+        }
       })
       .catch(err => {
         showError(err.key || 'networkError');
