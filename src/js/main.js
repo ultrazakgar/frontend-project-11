@@ -1,6 +1,6 @@
 import '../scss/style.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import 'bootstrap/dist/js/bootstrap.bootstrap.min.js';
 import '../scss/layout.scss';
 import * as yup from 'yup';
 import i18next from 'i18next';
@@ -264,7 +264,7 @@ const renderPosts = () => {
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <a href="${escapeHtml(post.link)}" 
                  target="_blank" 
-                 class="${state.readPostIds.has(post.id) ? 'fw-normal' : 'fw-bold'}">
+                 class="${state.readPostIds.has(post.id) ? 'link-secondary' : 'fw-bold'}">
                 ${escapeHtml(post.title)}
               </a>
               <button 
@@ -284,7 +284,6 @@ const renderPosts = () => {
   
   container.innerHTML = postsHtml;
   
-  // Manual modal handling
   document.querySelectorAll('.view-post-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const postId = btn.dataset.postId;
@@ -293,21 +292,18 @@ const renderPosts = () => {
       const link = btn.dataset.postLink;
       
       markPostAsRead(postId);
-      renderPosts(); // re-render to update bold/normal styles
+      renderPosts(); // re-render to update class
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        // Fill content
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
         
-        // Manually show modal
         modalElement.style.display = 'block';
         modalElement.classList.add('show');
         document.body.classList.add('modal-open');
         
-        // Add backdrop if not exists
         let backdrop = document.querySelector('.modal-backdrop');
         if (!backdrop) {
           backdrop = document.createElement('div');
@@ -315,7 +311,6 @@ const renderPosts = () => {
           document.body.appendChild(backdrop);
         }
         
-        // Close modal when clicking on close button or backdrop
         const closeModal = () => {
           modalElement.style.display = '';
           modalElement.classList.remove('show');
@@ -330,10 +325,7 @@ const renderPosts = () => {
           closeButton.addEventListener('click', closeModal);
         }
         
-        // Close on backdrop click
         backdrop?.addEventListener('click', closeModal);
-        
-        // Prevent closing when clicking inside modal content
         modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation());
       }
     });
@@ -349,7 +341,9 @@ const setError = (errorKey) => {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
-    feedback.style.display = 'block'; // ensure visible
+    feedback.style.display = 'block';
+    feedback.style.visibility = 'visible';
+    feedback.style.opacity = '1';
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -364,6 +358,8 @@ const clearFeedback = () => {
     feedback.textContent = '';
     feedback.classList.remove('invalid-feedback', 'text-success');
     feedback.style.display = '';
+    feedback.style.visibility = '';
+    feedback.style.opacity = '';
   }
   if (input) {
     input.classList.remove('is-invalid');
@@ -378,8 +374,6 @@ const initForm = () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    // Only clear previous feedback if we are about to show new one
-    // But we must clear before showing new error to avoid old messages
     clearFeedback();
     
     const url = input.value.trim();
@@ -388,7 +382,7 @@ const initForm = () => {
       return;
     }
     
-    // Validate URL using native URL constructor (reliable)
+    // Validate URL using native URL constructor (synchronous, reliable)
     let isValidUrl = true;
     try {
       new URL(url);
@@ -401,7 +395,7 @@ const initForm = () => {
       return;
     }
     
-    // Duplicate check
+    // Check duplicate
     if (state.feeds.some(feed => feed.url === url)) {
       setError('duplicate');
       return;
