@@ -1,6 +1,6 @@
 import '../scss/style.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bootstrap.min.js';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import '../scss/layout.scss';
 import * as yup from 'yup';
 import i18next from 'i18next';
@@ -202,7 +202,8 @@ const scheduleUpdates = () => {
 
 // ========== MARK POST AS READ ==========
 const markPostAsRead = (postId) => {
-  state.readPostIds.add(postId);
+  // Replace Set to trigger Valtio reactivity
+  state.readPostIds = new Set(state.readPostIds).add(postId);
 };
 
 // ========== RENDER FUNCTIONS ==========
@@ -344,6 +345,16 @@ const setError = (errorKey) => {
     feedback.style.display = 'block';
     feedback.style.visibility = 'visible';
     feedback.style.opacity = '1';
+  } else {
+    // Fallback: create feedback element if missing
+    const container = document.querySelector('#rss-form');
+    if (container) {
+      const newFeedback = document.createElement('div');
+      newFeedback.className = 'feedback invalid-feedback';
+      newFeedback.textContent = message;
+      newFeedback.style.display = 'block';
+      container.appendChild(newFeedback);
+    }
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -382,7 +393,7 @@ const initForm = () => {
       return;
     }
     
-    // Validate URL using native URL constructor (synchronous, reliable)
+    // Validate URL using native URL constructor
     let isValidUrl = true;
     try {
       new URL(url);
