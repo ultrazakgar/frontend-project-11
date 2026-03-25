@@ -327,11 +327,15 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
+        console.log('Modal element found, opening...');
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
+        console.log('Modal show called');
+      } else {
+        console.error('Modal element not found');
       }
     });
   });
@@ -340,11 +344,14 @@ const renderPosts = () => {
 const setError = (errorKey) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
+  const message = i18next.t(errorKey);
+  console.log('setError called with key:', errorKey, 'message:', message);
   
   if (feedback) {
-    feedback.textContent = i18next.t(errorKey);
+    feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
+    console.log('Feedback text set to:', feedback.textContent);
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -375,13 +382,17 @@ const initForm = () => {
     clearFeedback();
     
     const url = input.value.trim();
+    console.log('Submitted URL:', url);
+    
     if (!url) {
+      console.log('Empty URL');
       setError('empty');
       return;
     }
     
     // URL format validation
     if (!isValidUrl(url)) {
+      console.log('Invalid URL format');
       setError('invalidUrl');
       return;
     }
@@ -409,6 +420,7 @@ const initForm = () => {
         }, 3000);
       })
       .catch(err => {
+        console.log('Validation error from validateUrl:', err);
         setError(err.key);
       });
   });
