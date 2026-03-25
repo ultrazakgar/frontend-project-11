@@ -124,32 +124,6 @@ const getRssContent = (url) => {
     });
 };
 
-// ========== VALIDATION ==========
-const validateUrl = (url, existingFeeds) => {
-  // Check for empty URL
-  if (!url || url.trim() === '') {
-    throw { key: 'empty' };
-  }
-  
-  // Check if URL is valid using Yup
-  return yup.string().url().validate(url)
-    .then(() => {
-      // Check for duplicate
-      const isDuplicate = existingFeeds.some(feed => feed.url === url);
-      if (isDuplicate) {
-        throw { key: 'duplicate' };
-      }
-      return true;
-    })
-    .catch(err => {
-      // Yup validation error means invalid URL
-      if (err.name === 'ValidationError') {
-        throw { key: 'invalidUrl' };
-      }
-      throw err;
-    });
-};
-
 // ========== UPDATE FEEDS ==========
 const addFeed = (url) => {
   state.loading = true;
@@ -364,35 +338,54 @@ const initForm = () => {
     
     const url = input.value.trim();
     
-    try {
-      validateUrl(url, state.feeds)
-        .then(() => addFeed(url))
-        .then(() => {
-          clearFeedback();
-          renderFeeds();
-          renderPosts();
-          input.value = '';
-          input.focus();
-          
-          const feedbackDiv = document.querySelector('.feedback');
-          if (feedbackDiv) {
-            feedbackDiv.textContent = i18next.t('success');
-            feedbackDiv.classList.add('text-success');
-          }
-          
-          setTimeout(() => {
-            if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
-              feedbackDiv.textContent = '';
-              feedbackDiv.classList.remove('text-success');
-            }
-          }, 3000);
-        })
-        .catch(err => {
-          setError(err.key);
-        });
-    } catch (err) {
-      setError(err.key);
+    // 1. Check for empty
+    if (!url) {
+      setError('empty');
+      return;
     }
+    
+    // 2. Validate URL format using Yup
+    let isValidUrl = true;
+    try {
+      yup.string().url().validateSync(url);
+    } catch (err) {
+      isValidUrl = false;
+      setError('invalidUrl');
+      return;
+    }
+    
+    // 3. Check for duplicate
+    const isDuplicate = state.feeds.some(feed => feed.url === url);
+    if (isDuplicate) {
+      setError('duplicate');
+      return;
+    }
+    
+    // 4. If all validations pass, add feed
+    addFeed(url)
+      .then(() => {
+        clearFeedback();
+        renderFeeds();
+        renderPosts();
+        input.value = '';
+        input.focus();
+        
+        const feedbackDiv = document.querySelector('.feedback');
+        if (feedbackDiv) {
+          feedbackDiv.textContent = i18next.t('success');
+          feedbackDiv.classList.add('text-success');
+        }
+        
+        setTimeout(() => {
+          if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
+            feedbackDiv.textContent = '';
+            feedbackDiv.classList.remove('text-success');
+          }
+        }, 3000);
+      })
+      .catch(err => {
+        setError(err.key);
+      });
   });
   
   input.addEventListener('input', () => {
