@@ -60,15 +60,6 @@ const state = proxy({
 // ========== HELPERS ==========
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 6);
 
-const isValidUrl = (url) => {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 const parseRss = (xmlString, feedUrl) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlString, 'text/xml');
@@ -130,30 +121,6 @@ const getRssContent = (url) => {
       const networkError = new Error('networkError');
       networkError.key = 'networkError';
       throw networkError;
-    });
-};
-
-// ========== VALIDATION ==========
-const validateUrl = (url, existingFeeds) => {
-  return yup.object({
-    url: yup.string().required().url()
-  }).validate({ url })
-    .then(() => {
-      const isDuplicate = existingFeeds.some(feed => feed.url === url);
-      if (isDuplicate) {
-        throw { key: 'duplicate' };
-      }
-      return true;
-    })
-    .catch(err => {
-      if (err.key === 'duplicate') {
-        throw { key: 'duplicate' };
-      }
-      if (err.errors && err.errors[0]) {
-        const errorKey = err.errors[0].key || 'invalidUrl';
-        throw { key: errorKey };
-      }
-      throw { key: 'invalidUrl' };
     });
 };
 
@@ -327,15 +294,13 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        console.log('Modal element found, opening...');
+        // Ensure modal becomes visible (remove fade temporarily)
+        modalElement.classList.remove('fade');
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
-        console.log('Modal show called');
-      } else {
-        console.error('Modal element not found');
       }
     });
   });
@@ -345,13 +310,11 @@ const setError = (errorKey) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
   const message = i18next.t(errorKey);
-  console.log('setError called with key:', errorKey, 'message:', message);
   
   if (feedback) {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
-    console.log('Feedback text set to:', feedback.textContent);
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -382,23 +345,33 @@ const initForm = () => {
     clearFeedback();
     
     const url = input.value.trim();
-    console.log('Submitted URL:', url);
-    
     if (!url) {
-      console.log('Empty URL');
       setError('empty');
       return;
     }
     
-    // URL format validation
-    if (!isValidUrl(url)) {
-      console.log('Invalid URL format');
+    // Validate URL using yup synchronously
+    let isValid = false;
+    try {
+      yup.string().url().validateSync(url);
+      isValid = true;
+    } catch (err) {
+      isValid = false;
+    }
+    
+    if (!isValid) {
       setError('invalidUrl');
       return;
     }
     
-    validateUrl(url, state.feeds)
-      .then(() => addFeed(url))
+    // Check duplicate
+    if (state.feeds.some(feed => feed.url === url)) {
+      setError('duplicate');
+      return;
+    }
+    
+    // Add feed
+    addFeed(url)
       .then(() => {
         clearFeedback();
         renderFeeds();
@@ -420,7 +393,6 @@ const initForm = () => {
         }, 3000);
       })
       .catch(err => {
-        console.log('Validation error from validateUrl:', err);
         setError(err.key);
       });
   });
