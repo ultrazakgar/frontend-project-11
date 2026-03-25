@@ -126,13 +126,6 @@ const getRssContent = (url) => {
 
 // ========== VALIDATION ==========
 const validateUrl = (url, existingFeeds) => {
-  // Clear feedback before validation
-  const feedbackDiv = document.querySelector('.feedback');
-  if (feedbackDiv && !feedbackDiv.classList.contains('text-success')) {
-    feedbackDiv.textContent = '';
-    feedbackDiv.classList.remove('invalid-feedback');
-  }
-  
   return yup.object({
     url: yup.string().required().url()
   }).validate({ url })
@@ -174,23 +167,12 @@ const addFeed = (url) => {
       state.form.isValid = true;
       state.form.errorKey = null;
       
+      // Show success message
       const feedbackDiv = document.querySelector('.feedback');
       if (feedbackDiv) {
-        // Clear previous messages
-        feedbackDiv.textContent = '';
-        feedbackDiv.classList.remove('invalid-feedback', 'text-success');
-        
-        // Show success message
         feedbackDiv.textContent = i18next.t('success');
+        feedbackDiv.classList.remove('invalid-feedback');
         feedbackDiv.classList.add('text-success');
-        
-        // Clear after 2 seconds to not interfere with next actions
-        setTimeout(() => {
-          if (feedbackDiv.textContent === i18next.t('success')) {
-            feedbackDiv.textContent = '';
-            feedbackDiv.classList.remove('text-success');
-          }
-        }, 2000);
       }
     })
     .catch(err => {
@@ -351,9 +333,10 @@ const renderFormError = () => {
       feedback.classList.add('invalid-feedback');
       feedback.classList.remove('text-success');
     }
-  } else {
+  } else if (state.form.isValid && state.form.errorKey === null && feedback) {
     input.classList.remove('is-invalid');
-    if (feedback && !feedback.classList.contains('text-success')) {
+    // Only clear if it's an error message, not a success message
+    if (feedback.classList.contains('invalid-feedback')) {
       feedback.textContent = '';
       feedback.classList.remove('invalid-feedback');
     }
@@ -367,6 +350,13 @@ const initForm = () => {
   
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    
+    // Clear previous feedback before new submission
+    const feedbackDiv = document.querySelector('.feedback');
+    if (feedbackDiv) {
+      feedbackDiv.textContent = '';
+      feedbackDiv.classList.remove('invalid-feedback', 'text-success');
+    }
     
     const url = input.value.trim();
     if (!url) {
@@ -383,6 +373,8 @@ const initForm = () => {
         renderPosts();
         input.value = '';
         input.focus();
+        state.form.isValid = true;
+        state.form.errorKey = null;
         renderFormError();
       })
       .catch(err => {
