@@ -60,6 +60,15 @@ const state = proxy({
 // ========== HELPERS ==========
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 6);
 
+const isValidUrl = (url) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const parseRss = (xmlString, feedUrl) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlString, 'text/xml');
@@ -318,10 +327,10 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
+        const modal = new bootstrap.Modal(modalElement);
         modal.show();
       }
     });
@@ -368,6 +377,12 @@ const initForm = () => {
     const url = input.value.trim();
     if (!url) {
       setError('empty');
+      return;
+    }
+    
+    // URL format validation
+    if (!isValidUrl(url)) {
+      setError('invalidUrl');
       return;
     }
     
