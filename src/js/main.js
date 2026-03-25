@@ -303,9 +303,6 @@ const setError = (errorKey) => {
   
   const message = i18next.t(errorKey);
   
-  // For debugging
-  console.log('Setting error:', errorKey, message);
-  
   if (feedback) {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
@@ -341,27 +338,34 @@ const initForm = () => {
     
     const url = input.value.trim();
     
-    // Check for empty
+    // 1. Check for empty
     if (!url) {
       setError('empty');
       return;
     }
     
-    // Check URL format using simple regex first (more reliable for tests)
-    const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
-    if (!urlPattern.test(url)) {
+    // 2. Check if URL is valid using Yup synchronously
+    let isValidUrl = false;
+    try {
+      yup.string().url().validateSync(url);
+      isValidUrl = true;
+    } catch (err) {
+      isValidUrl = false;
+    }
+    
+    if (!isValidUrl) {
       setError('invalidUrl');
       return;
     }
     
-    // Check duplicate
+    // 3. Check for duplicate
     const isDuplicate = state.feeds.some(feed => feed.url === url);
     if (isDuplicate) {
       setError('duplicate');
       return;
     }
     
-    // Add feed
+    // 4. Add feed
     addFeed(url)
       .then(() => {
         clearFeedback();
