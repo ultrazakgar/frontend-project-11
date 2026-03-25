@@ -342,7 +342,8 @@ const setError = (errorKey) => {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
-    feedback.style.display = 'block';
+    // Force visibility with !important
+    feedback.style.setProperty('display', 'block', 'important');
     feedback.style.visibility = 'visible';
     feedback.style.opacity = '1';
   } else {
@@ -352,7 +353,7 @@ const setError = (errorKey) => {
       const newFeedback = document.createElement('div');
       newFeedback.className = 'feedback invalid-feedback';
       newFeedback.textContent = message;
-      newFeedback.style.display = 'block';
+      newFeedback.style.setProperty('display', 'block', 'important');
       container.appendChild(newFeedback);
     }
   }
@@ -385,7 +386,8 @@ const initForm = () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    clearFeedback();
+    // Do NOT clear feedback before validation – we'll override if needed
+    // clearFeedback(); // removed
     
     const url = input.value.trim();
     if (!url) {
@@ -393,7 +395,7 @@ const initForm = () => {
       return;
     }
     
-    // Validate URL using native URL constructor
+    // Validate URL using native URL constructor (synchronous, reliable)
     let isValidUrl = true;
     try {
       new URL(url);
