@@ -126,6 +126,13 @@ const getRssContent = (url) => {
 
 // ========== VALIDATION ==========
 const validateUrl = (url, existingFeeds) => {
+  // Clear feedback before validation
+  const feedbackDiv = document.querySelector('.feedback');
+  if (feedbackDiv && !feedbackDiv.classList.contains('text-success')) {
+    feedbackDiv.textContent = '';
+    feedbackDiv.classList.remove('invalid-feedback');
+  }
+  
   return yup.object({
     url: yup.string().required().url()
   }).validate({ url })
@@ -169,17 +176,21 @@ const addFeed = (url) => {
       
       const feedbackDiv = document.querySelector('.feedback');
       if (feedbackDiv) {
+        // Clear previous messages
+        feedbackDiv.textContent = '';
+        feedbackDiv.classList.remove('invalid-feedback', 'text-success');
+        
+        // Show success message
         feedbackDiv.textContent = i18next.t('success');
-        feedbackDiv.classList.remove('invalid-feedback');
         feedbackDiv.classList.add('text-success');
         
-        // Clear success message after 3 seconds
+        // Clear after 2 seconds to not interfere with next actions
         setTimeout(() => {
           if (feedbackDiv.textContent === i18next.t('success')) {
             feedbackDiv.textContent = '';
             feedbackDiv.classList.remove('text-success');
           }
-        }, 3000);
+        }, 2000);
       }
     })
     .catch(err => {
