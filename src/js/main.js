@@ -322,24 +322,30 @@ const renderPosts = () => {
   });
 };
 
-const renderFormError = () => {
+const setError = (errorKey) => {
   const input = document.querySelector('#rss-input');
   const feedback = document.querySelector('.feedback');
   
-  if (!state.form.isValid && state.form.errorKey) {
+  if (feedback) {
+    feedback.textContent = i18next.t(errorKey);
+    feedback.classList.add('invalid-feedback');
+    feedback.classList.remove('text-success');
+  }
+  if (input) {
     input.classList.add('is-invalid');
-    if (feedback) {
-      feedback.textContent = i18next.t(state.form.errorKey);
-      feedback.classList.add('invalid-feedback');
-      feedback.classList.remove('text-success');
-    }
-  } else if (state.form.isValid && state.form.errorKey === null && feedback) {
+  }
+};
+
+const clearFeedback = () => {
+  const input = document.querySelector('#rss-input');
+  const feedback = document.querySelector('.feedback');
+  
+  if (feedback) {
+    feedback.textContent = '';
+    feedback.classList.remove('invalid-feedback', 'text-success');
+  }
+  if (input) {
     input.classList.remove('is-invalid');
-    // Only clear if it's an error message, not a success message
-    if (feedback.classList.contains('invalid-feedback')) {
-      feedback.textContent = '';
-      feedback.classList.remove('invalid-feedback');
-    }
   }
 };
 
@@ -351,42 +357,46 @@ const initForm = () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    // Clear previous feedback before new submission
-    const feedbackDiv = document.querySelector('.feedback');
-    if (feedbackDiv) {
-      feedbackDiv.textContent = '';
-      feedbackDiv.classList.remove('invalid-feedback', 'text-success');
-    }
+    // Clear previous feedback
+    clearFeedback();
     
     const url = input.value.trim();
     if (!url) {
-      state.form.isValid = false;
-      state.form.errorKey = 'empty';
-      renderFormError();
+      setError('empty');
       return;
     }
     
     validateUrl(url, state.feeds)
       .then(() => addFeed(url))
       .then(() => {
+        clearFeedback();
         renderFeeds();
         renderPosts();
         input.value = '';
         input.focus();
-        state.form.isValid = true;
-        state.form.errorKey = null;
-        renderFormError();
+        
+        // Show success message
+        const feedbackDiv = document.querySelector('.feedback');
+        if (feedbackDiv) {
+          feedbackDiv.textContent = i18next.t('success');
+          feedbackDiv.classList.add('text-success');
+        }
+        
+        // Clear success after 3 seconds
+        setTimeout(() => {
+          if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
+            feedbackDiv.textContent = '';
+            feedbackDiv.classList.remove('text-success');
+          }
+        }, 3000);
       })
       .catch(err => {
-        renderFormError();
-        input.classList.add('is-invalid');
+        setError(err.key);
       });
   });
   
   input.addEventListener('input', () => {
-    state.form.isValid = true;
-    state.form.errorKey = null;
-    renderFormError();
+    clearFeedback();
   });
 };
 
@@ -399,7 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
   subscribe(state, () => {
     renderFeeds();
     renderPosts();
-    renderFormError();
   });
   
   scheduleUpdates();
