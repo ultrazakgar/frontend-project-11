@@ -7,6 +7,7 @@ import i18next from 'i18next';
 import { proxy, subscribe } from 'valtio/vanilla';
 import axios from 'axios';
 
+
 // ========== I18N CONFIG ==========
 i18next.init({
   lng: 'ru',
