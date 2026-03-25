@@ -294,13 +294,23 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        // Ensure modal becomes visible (remove fade temporarily)
-        modalElement.classList.remove('fade');
+        // Set content
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
+        
+        // Force modal to be visible (direct DOM manipulation)
+        modalElement.style.display = 'block';
+        modalElement.classList.add('show');
+        document.body.classList.add('modal-open');
+        
+        // Add backdrop if not present
+        let backdrop = document.querySelector('.modal-backdrop');
+        if (!backdrop) {
+          backdrop = document.createElement('div');
+          backdrop.className = 'modal-backdrop fade show';
+          document.body.appendChild(backdrop);
+        }
       }
     });
   });
@@ -315,6 +325,7 @@ const setError = (errorKey) => {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
+    feedback.style.display = 'block';
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -328,6 +339,7 @@ const clearFeedback = () => {
   if (feedback) {
     feedback.textContent = '';
     feedback.classList.remove('invalid-feedback', 'text-success');
+    feedback.style.display = '';
   }
   if (input) {
     input.classList.remove('is-invalid');
@@ -350,16 +362,15 @@ const initForm = () => {
       return;
     }
     
-    // Validate URL using yup synchronously
-    let isValid = false;
+    // Validate URL using native URL constructor (synchronous, reliable)
+    let isValidUrl = true;
     try {
-      yup.string().url().validateSync(url);
-      isValid = true;
-    } catch (err) {
-      isValid = false;
+      new URL(url);
+    } catch {
+      isValidUrl = false;
     }
     
-    if (!isValid) {
+    if (!isValidUrl) {
       setError('invalidUrl');
       return;
     }
