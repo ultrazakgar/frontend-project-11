@@ -94,19 +94,10 @@ const getRssContent = (url) => {
       if (!response.data?.contents) throw { key: 'invalidRss' };
       return parseRss(response.data.contents, url);
     })
-    .catch(() => {
+    .catch((error) => {
+      if (error.key === 'invalidRss') throw error;
       throw { key: 'networkError' };
     });
-};
-
-// ========== VALIDATION ==========
-const isValidUrl = (url) => {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 // ========== ADD FEED ==========
@@ -119,7 +110,6 @@ const addFeed = (url) => {
       );
       state.posts = [...state.posts, ...newPosts];
       
-      // Show success
       const feedback = document.querySelector('.feedback');
       if (feedback) {
         feedback.textContent = i18next.t('success');
@@ -234,7 +224,6 @@ const renderPosts = () => {
     </div>
   `;
   
-  // Attach modal handlers
   document.querySelectorAll('.view-post-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -290,25 +279,30 @@ const initForm = () => {
     
     const url = input.value.trim();
     
-    // Empty check
     if (!url) {
       showError('empty');
       return;
     }
     
-    // URL format check
-    if (!isValidUrl(url)) {
+    // URL validation using yup
+    let isValid = false;
+    try {
+      yup.string().url().validateSync(url);
+      isValid = true;
+    } catch (err) {
+      isValid = false;
+    }
+    
+    if (!isValid) {
       showError('invalidUrl');
       return;
     }
     
-    // Duplicate check
     if (state.feeds.some(feed => feed.url === url)) {
       showError('duplicate');
       return;
     }
     
-    // Add feed
     addFeed(url)
       .then(() => {
         clearError();
