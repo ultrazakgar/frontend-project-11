@@ -6,18 +6,18 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 export default {
-  root: resolve(__dirname),  // изменено: корень проекта, а не папка src
+  root: resolve(__dirname), // корень проекта, а не папка src
   build: {
-    outDir: 'dist',  // изменено: dist в корне
+    outDir: 'dist', // dist в корне
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),  // указываем entry point
+        main: resolve(__dirname, 'index.html'), // указываем entry point
       },
     },
   },
   server: {
     port: 8080,
-    open: true,  // добавил: автоматически открывать браузер
+    open: true, // автоматически открывать браузер
   },
   css: {
     preprocessorOptions: {
