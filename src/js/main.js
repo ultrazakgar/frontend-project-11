@@ -126,10 +126,15 @@ const getRssContent = (url) => {
 
 // ========== VALIDATION ==========
 const validateUrl = (url, existingFeeds) => {
-  return yup.object({
-    url: yup.string().required().url()
-  }).validate({ url })
+  // Check for empty URL
+  if (!url || url.trim() === '') {
+    throw { key: 'empty' };
+  }
+  
+  // Check if URL is valid using Yup
+  return yup.string().url().validate(url)
     .then(() => {
+      // Check for duplicate
       const isDuplicate = existingFeeds.some(feed => feed.url === url);
       if (isDuplicate) {
         throw { key: 'duplicate' };
@@ -137,18 +142,11 @@ const validateUrl = (url, existingFeeds) => {
       return true;
     })
     .catch(err => {
-      console.log('Validation error:', err);
-      if (err.key === 'duplicate') {
-        throw { key: 'duplicate' };
-      }
+      // Yup validation error means invalid URL
       if (err.name === 'ValidationError') {
         throw { key: 'invalidUrl' };
       }
-      if (err.errors && err.errors[0]) {
-        const errorKey = err.errors[0].key || 'invalidUrl';
-        throw { key: errorKey };
-      }
-      throw { key: 'invalidUrl' };
+      throw err;
     });
 };
 
@@ -320,8 +318,6 @@ const renderPosts = () => {
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
         modal.show();
-      } else {
-        console.error('Modal element not found');
       }
     });
   });
@@ -332,7 +328,6 @@ const setError = (errorKey) => {
   const feedback = document.querySelector('.feedback');
   
   const message = i18next.t(errorKey);
-  console.log('Setting error:', errorKey, message);
   
   if (feedback) {
     feedback.textContent = message;
@@ -368,37 +363,36 @@ const initForm = () => {
     clearFeedback();
     
     const url = input.value.trim();
-    if (!url) {
-      setError('empty');
-      return;
-    }
     
-    validateUrl(url, state.feeds)
-      .then(() => addFeed(url))
-      .then(() => {
-        clearFeedback();
-        renderFeeds();
-        renderPosts();
-        input.value = '';
-        input.focus();
-        
-        const feedbackDiv = document.querySelector('.feedback');
-        if (feedbackDiv) {
-          feedbackDiv.textContent = i18next.t('success');
-          feedbackDiv.classList.add('text-success');
-        }
-        
-        setTimeout(() => {
-          if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
-            feedbackDiv.textContent = '';
-            feedbackDiv.classList.remove('text-success');
+    try {
+      validateUrl(url, state.feeds)
+        .then(() => addFeed(url))
+        .then(() => {
+          clearFeedback();
+          renderFeeds();
+          renderPosts();
+          input.value = '';
+          input.focus();
+          
+          const feedbackDiv = document.querySelector('.feedback');
+          if (feedbackDiv) {
+            feedbackDiv.textContent = i18next.t('success');
+            feedbackDiv.classList.add('text-success');
           }
-        }, 3000);
-      })
-      .catch(err => {
-        console.log('Caught error in submit:', err);
-        setError(err.key);
-      });
+          
+          setTimeout(() => {
+            if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
+              feedbackDiv.textContent = '';
+              feedbackDiv.classList.remove('text-success');
+            }
+          }, 3000);
+        })
+        .catch(err => {
+          setError(err.key);
+        });
+    } catch (err) {
+      setError(err.key);
+    }
   });
   
   input.addEventListener('input', () => {
