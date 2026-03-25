@@ -1,86 +1,376 @@
-import '../scss/style.scss'
-import 'bootstrap/dist/css/bootstrap.min.css'
-import '../scss/layout.scss'
-import javascriptLogo from '../javascript.svg'
-import viteLogo from '../../public/vite.svg'
-import { setupCounter } from '../counter.js'
+import '../scss/style.scss';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import '../scss/layout.scss';
 import * as yup from 'yup';
+import i18next from 'i18next';
+import { proxy, subscribe } from 'valtio/vanilla';
+import axios from 'axios';
 
-document.querySelector('#app-footer').innerHTML = `
-  Created by me
-`
-// rss grid here
-document.querySelector('#app-container').innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-      <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
-    </a>
-    <h1>Hello Vite!</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite logo to learn more
-    </p>
-  </div>
-`
-// form here
-
-setupCounter(document.querySelector('#counter'))
-
-// setup onchange handler on rss input / change @todo - paste input
-let rssinput=document.querySelector('#inputRSSchannel');
-let button =document.querySelector('#rssFormButton');
-
-function validate(callback){
-  // --------------------------
-let schema = yup.object().shape({
-  rss: yup.string().required().url(),
-  createdOn: yup.date().default(function () {
-    return new Date();
-  }),
-});
-schema.validate({ rss: rssinput.value }).catch(function (err) {
-    // Не должно быть пустым, Ссылка должна быть валидным URL
-    if(err.name=='ValidationError'){
-      if(err.errors.includes("rss must be a valid URL")){
-        rssinput.setCustomValidity("Ссылка должна быть валидным URL")
-      } else if(err.errors.includes("rss is a required field")){
-        rssinput.setCustomValidity("Не должно быть пустым")
-      } else {
-        rssinput.setCustomValidity(err.errors[0])
+// ========== I18N CONFIG ==========
+i18next.init({
+  lng: 'ru',
+  resources: {
+    ru: {
+      translation: {
+        rssLabel: 'Ссылка RSS',
+        addButton: 'Добавить',
+        viewButton: 'Просмотр',
+        closeButton: 'Закрыть',
+        readFullButton: 'Читать полностью',
+        feedsTitle: 'Фиды',
+        postsTitle: 'Посты',
+        success: 'RSS успешно загружен',
+        duplicate: 'RSS уже существует',
+        empty: 'Не должно быть пустым',
+        invalidUrl: 'Ссылка должна быть валидным URL',
+        invalidRss: 'Ресурс не содержит валидный RSS',
+        networkError: 'Ошибка сети',
+        modalExampleText: 'Цель: Научиться извлекать из дерева необходимые данные'
       }
-      rssinput.classList.add('is-invalid')
-      rssinput.classList.remove('is-valid')
-      
-    }//console.log( err.name, // => 'ValidationError'
- // err.errors); // => [{ key: 'field_too_short', values: { min: 18 } }]
-}).then(function (valid) {
-  if(valid){
-      rssinput.setCustomValidity('');
-      rssinput.classList.remove('is-invalid')
-      rssinput.classList.add('is-valid')
-      callback (valid)
-  } else {
-    rssinput.reportValidity();
+    }
+  }
+});
+
+// ========== YUP LOCALE ==========
+yup.setLocale({
+  mixed: {
+    required: () => ({ key: 'empty' }),
+    notType: () => ({ key: 'invalidUrl' })
+  },
+  string: {
+    url: () => ({ key: 'invalidUrl' })
+  }
+});
+
+// ========== STATE (Valtio) ==========
+const state = proxy({
+  feeds: [],
+  posts: [],
+  readPostIds: new Set(),
+  loading: false,
+  error: null,
+  form: {
+    value: '',
+    isValid: true,
+    errorKey: null
+  }
+});
+
+// ========== HELPERS ==========
+const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 6);
+
+const parseRss = (xmlString, feedUrl) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlString, 'text/xml');
+  
+  const parseError = doc.querySelector('parsererror');
+  if (parseError) {
+    throw new Error('invalidRss');
+  }
+  
+  const channel = doc.querySelector('channel');
+  if (!channel) {
+    throw new Error('invalidRss');
+  }
+  
+  const title = channel.querySelector('title')?.textContent || '';
+  const description = channel.querySelector('description')?.textContent || '';
+  
+  const items = Array.from(channel.querySelectorAll('item'));
+  const posts = items.map(item => ({
+    id: generateId(),
+    title: item.querySelector('title')?.textContent || '',
+    description: item.querySelector('description')?.textContent || '',
+    link: item.querySelector('link')?.textContent || '',
+    feedId: feedUrl
+  }));
+  
+  return {
+    feed: {
+      id: feedUrl,
+      title,
+      description,
+      url: feedUrl
+    },
+    posts
   };
-})
-}
-rssinput.addEventListener('change', () =>  validate((obj)=>{
-  console.log('input',obj)
- }))
- rssinput.addEventListener('paste', () =>  validate((obj)=>{
-  console.log('paste',obj)
- }))
- rssinput.addEventListener('input', () =>  
-  rssinput.setCustomValidity('')
- )
+};
 
- button.addEventListener('click', () => validate((obj)=>{
-  console.log('button',obj)
- }))
- 
+const getRssContent = (url) => {
+  const proxyUrl = 'https://allorigins.hexlet.app/get';
+  const encodedUrl = encodeURIComponent(url);
+  
+  return axios.get(`${proxyUrl}?url=${encodedUrl}&disableCache=true`)
+    .then(response => {
+      if (!response.data || !response.data.contents) {
+        throw new Error('invalidRss');
+      }
+      return parseRss(response.data.contents, url);
+    });
+};
 
+// ========== VALIDATION ==========
+const validateUrl = (url, existingFeeds) => {
+  return yup.object({
+    url: yup.string().required().url()
+  }).validate({ url })
+    .then(() => {
+      const isDuplicate = existingFeeds.some(feed => feed.url === url);
+      if (isDuplicate) {
+        throw { key: 'duplicate' };
+      }
+      return true;
+    })
+    .catch(err => {
+      if (err.key === 'duplicate') {
+        throw { key: 'duplicate' };
+      }
+      if (err.errors && err.errors[0]) {
+        const errorKey = err.errors[0].key || 'invalidUrl';
+        throw { key: errorKey };
+      }
+      throw { key: 'invalidUrl' };
+    });
+};
+
+// ========== UPDATE FEEDS ==========
+const addFeed = (url) => {
+  state.loading = true;
+  state.error = null;
+  
+  return getRssContent(url)
+    .then(({ feed, posts }) => {
+      state.feeds = [...state.feeds, feed];
+      
+      const newPosts = posts.filter(post => 
+        !state.posts.some(existing => existing.link === post.link)
+      );
+      state.posts = [...state.posts, ...newPosts];
+      
+      state.loading = false;
+      state.form.value = '';
+      state.form.isValid = true;
+      state.form.errorKey = null;
+      
+      const successDiv = document.createElement('div');
+      successDiv.className = 'alert alert-success alert-dismissible fade show';
+      successDiv.role = 'alert';
+      successDiv.textContent = i18next.t('success');
+      successDiv.innerHTML += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+      document.querySelector('#rss-form').after(successDiv);
+      
+      setTimeout(() => successDiv.remove(), 3000);
+    })
+    .catch(err => {
+      state.loading = false;
+      state.form.isValid = false;
+      state.form.errorKey = err.key || 'networkError';
+      throw err;
+    });
+};
+
+// ========== POLLING UPDATES ==========
+const updateFeedPosts = (feedUrl) => {
+  return getRssContent(feedUrl)
+    .then(({ posts }) => {
+      const newPosts = posts.filter(post => 
+        !state.posts.some(existing => existing.link === post.link)
+      );
+      if (newPosts.length > 0) {
+        state.posts = [...state.posts, ...newPosts];
+      }
+    })
+    .catch(err => {
+      console.error(`Error updating feed ${feedUrl}:`, err);
+    });
+};
+
+const scheduleUpdates = () => {
+  const checkAllFeeds = () => {
+    if (state.feeds.length === 0) {
+      setTimeout(scheduleUpdates, 5000);
+      return;
+    }
+    
+    const feedUrls = state.feeds.map(feed => feed.url);
+    Promise.all(feedUrls.map(updateFeedPosts))
+      .finally(() => {
+        setTimeout(scheduleUpdates, 5000);
+      });
+  };
+  
+  setTimeout(checkAllFeeds, 5000);
+};
+
+// ========== MARK POST AS READ ==========
+const markPostAsRead = (postId) => {
+  state.readPostIds.add(postId);
+};
+
+// ========== RENDER FUNCTIONS ==========
+const renderFeeds = () => {
+  const container = document.querySelector('#feeds-container');
+  if (!container) return;
+  
+  if (state.feeds.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const feedsHtml = `
+    <div class="card mb-4">
+      <div class="card-header">
+        <h2>${i18next.t('feedsTitle')}</h2>
+      </div>
+      <div class="card-body">
+        ${state.feeds.map(feed => `
+          <div class="mb-3">
+            <h3>${escapeHtml(feed.title)}</h3>
+            <p>${escapeHtml(feed.description)}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = feedsHtml;
+};
+
+const renderPosts = () => {
+  const container = document.querySelector('#posts-container');
+  if (!container) return;
+  
+  if (state.posts.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  const postsHtml = `
+    <div class="card">
+      <div class="card-header">
+        <h2>${i18next.t('postsTitle')}</h2>
+      </div>
+      <div class="card-body">
+        <ul class="list-group">
+          ${state.posts.map(post => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <a href="${escapeHtml(post.link)}" 
+                 target="_blank" 
+                 class="${state.readPostIds.has(post.id) ? 'fw-normal' : 'fw-bold'}">
+                ${escapeHtml(post.title)}
+              </a>
+              <button 
+                class="btn btn-sm btn-outline-primary view-post-btn" 
+                data-post-id="${post.id}"
+                data-post-title="${escapeHtml(post.title)}"
+                data-post-description="${escapeHtml(post.description)}"
+                data-post-link="${escapeHtml(post.link)}">
+                ${i18next.t('viewButton')}
+              </button>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = postsHtml;
+  
+  document.querySelectorAll('.view-post-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const postId = btn.dataset.postId;
+      const title = btn.dataset.postTitle;
+      const description = btn.dataset.postDescription;
+      const link = btn.dataset.postLink;
+      
+      markPostAsRead(postId);
+      renderPosts();
+      
+      const modal = new bootstrap.Modal(document.getElementById('post-modal'));
+      document.querySelector('#modal-title').textContent = title;
+      document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
+      document.querySelector('#modal-full-link').href = link;
+      modal.show();
+    });
+  });
+};
+
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const renderFormError = () => {
+  const input = document.querySelector('#rss-input');
+  const feedback = document.querySelector('#rss-feedback');
+  
+  if (!state.form.isValid && state.form.errorKey) {
+    input.classList.add('is-invalid');
+    feedback.textContent = i18next.t(state.form.errorKey);
+  } else {
+    input.classList.remove('is-invalid');
+    feedback.textContent = '';
+  }
+};
+
+// ========== FORM HANDLER ==========
+const initForm = () => {
+  const form = document.querySelector('#rss-form');
+  const input = document.querySelector('#rss-input');
+  const submitBtn = document.querySelector('#rss-submit');
+  
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const url = input.value.trim();
+    if (!url) {
+      state.form.isValid = false;
+      state.form.errorKey = 'empty';
+      renderFormError();
+      return;
+    }
+    
+    validateUrl(url, state.feeds)
+      .then(() => addFeed(url))
+      .then(() => {
+        renderFeeds();
+        renderPosts();
+        input.value = '';
+        input.focus();
+        renderFormError();
+      })
+      .catch(err => {
+        renderFormError();
+        input.classList.add('is-invalid');
+      });
+  });
+  
+  input.addEventListener('input', () => {
+    state.form.isValid = true;
+    state.form.errorKey = null;
+    renderFormError();
+  });
+};
+
+// ========== INITIALIZE ==========
+document.addEventListener('DOMContentLoaded', () => {
+  initForm();
+  renderFeeds();
+  renderPosts();
+  
+  subscribe(state, () => {
+    renderFeeds();
+    renderPosts();
+    renderFormError();
+  });
+  
+  scheduleUpdates();
+  
+  window.state = state;
+});
