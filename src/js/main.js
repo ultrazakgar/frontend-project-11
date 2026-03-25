@@ -82,7 +82,7 @@ const parseRss = (xmlString, feedUrl) => {
   const description = channel.querySelector('description')?.textContent || ''
 
   const items = Array.from(channel.querySelectorAll('item'))
-  const posts = items.map((item) => ({
+  const posts = items.map(item => ({
     id: generateId(),
     title: item.querySelector('title')?.textContent || '',
     description: item.querySelector('description')?.textContent || '',
