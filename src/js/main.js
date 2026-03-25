@@ -66,12 +66,16 @@ const parseRss = (xmlString, feedUrl) => {
   
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
-    throw new Error('invalidRss');
+    const error = new Error('invalidRss');
+    error.key = 'invalidRss';
+    throw error;
   }
   
   const channel = doc.querySelector('channel');
   if (!channel) {
-    throw new Error('invalidRss');
+    const error = new Error('invalidRss');
+    error.key = 'invalidRss';
+    throw error;
   }
   
   const title = channel.querySelector('title')?.textContent || '';
@@ -104,9 +108,19 @@ const getRssContent = (url) => {
   return axios.get(`${proxyUrl}?url=${encodedUrl}&disableCache=true`)
     .then(response => {
       if (!response.data || !response.data.contents) {
-        throw new Error('invalidRss');
+        const error = new Error('invalidRss');
+        error.key = 'invalidRss';
+        throw error;
       }
       return parseRss(response.data.contents, url);
+    })
+    .catch(error => {
+      if (error.key === 'invalidRss') {
+        throw error;
+      }
+      const networkError = new Error('networkError');
+      networkError.key = 'networkError';
+      throw networkError;
     });
 };
 
@@ -154,12 +168,11 @@ const addFeed = (url) => {
       state.form.errorKey = null;
       
       const feedbackDiv = document.querySelector('.feedback');
-      feedbackDiv.textContent = i18next.t('success');
-      feedbackDiv.classList.add('text-success');
-      setTimeout(() => {
-        feedbackDiv.textContent = '';
-        feedbackDiv.classList.remove('text-success');
-      }, 3000);
+      if (feedbackDiv) {
+        feedbackDiv.textContent = i18next.t('success');
+        feedbackDiv.classList.remove('invalid-feedback');
+        feedbackDiv.classList.add('text-success');
+      }
     })
     .catch(err => {
       state.loading = false;
@@ -188,14 +201,14 @@ const updateFeedPosts = (feedUrl) => {
 const scheduleUpdates = () => {
   const checkAllFeeds = () => {
     if (state.feeds.length === 0) {
-      setTimeout(scheduleUpdates, 5000);
+      setTimeout(checkAllFeeds, 5000);
       return;
     }
     
     const feedUrls = state.feeds.map(feed => feed.url);
     Promise.all(feedUrls.map(updateFeedPosts))
       .finally(() => {
-        setTimeout(scheduleUpdates, 5000);
+        setTimeout(checkAllFeeds, 5000);
       });
   };
   
@@ -296,7 +309,8 @@ const renderPosts = () => {
       markPostAsRead(postId);
       renderPosts();
       
-      const modal = new bootstrap.Modal(document.getElementById('post-modal'));
+      const modalElement = document.getElementById('post-modal');
+      const modal = new bootstrap.Modal(modalElement);
       document.querySelector('#modal-title').textContent = title;
       document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
       document.querySelector('#modal-full-link').href = link;
@@ -311,12 +325,27 @@ const renderFormError = () => {
   
   if (!state.form.isValid && state.form.errorKey) {
     input.classList.add('is-invalid');
-    feedback.textContent = i18next.t(state.form.errorKey);
-    feedback.classList.add('invalid-feedback');
+    if (feedback) {
+      feedback.textContent = i18next.t(state.form.errorKey);
+      feedback.classList.add('invalid-feedback');
+      feedback.classList.remove('text-success');
+    }
   } else {
     input.classList.remove('is-invalid');
-    feedback.textContent = '';
-    feedback.classList.remove('invalid-feedback');
+    if (feedback) {
+      if (feedback.textContent === i18next.t('success')) {
+        // Keep success message for a bit longer
+        setTimeout(() => {
+          if (feedback.textContent === i18next.t('success')) {
+            feedback.textContent = '';
+            feedback.classList.remove('text-success');
+          }
+        }, 3000);
+      } else {
+        feedback.textContent = '';
+        feedback.classList.remove('invalid-feedback', 'text-success');
+      }
+    }
   }
 };
 
