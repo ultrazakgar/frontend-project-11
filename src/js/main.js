@@ -1,12 +1,11 @@
-import '../scss/style.scss';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import '../scss/layout.scss';
-import * as yup from 'yup';
-import i18next from 'i18next';
-import { proxy, subscribe } from 'valtio/vanilla';
-import axios from 'axios';
-
+import '../scss/style.scss'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import '../scss/layout.scss'
+import * as yup from 'yup'
+import i18next from 'i18next'
+import { proxy, subscribe } from 'valtio/vanilla'
+import axios from 'axios'
 
 // ========== I18N CONFIG ==========
 i18next.init({
@@ -31,7 +30,7 @@ i18next.init({
       },
     },
   },
-});
+})
 
 // ========== YUP LOCALE ==========
 yup.setLocale({
@@ -42,7 +41,7 @@ yup.setLocale({
   string: {
     url: () => ({ key: 'invalidUrl' }),
   },
-});
+})
 
 // ========== STATE (Valtio) ==========
 const state = proxy({
@@ -56,40 +55,40 @@ const state = proxy({
     isValid: true,
     errorKey: null,
   },
-});
+})
 
 // ========== HELPERS ==========
-const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 6);
+const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 6)
 
 const parseRss = (xmlString, feedUrl) => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlString, 'text/xml');
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(xmlString, 'text/xml')
 
-  const parseError = doc.querySelector('parsererror');
+  const parseError = doc.querySelector('parsererror')
   if (parseError) {
-    const error = new Error('invalidRss');
-    error.key = 'invalidRss';
-    throw error;
+    const error = new Error('invalidRss')
+    error.key = 'invalidRss'
+    throw error
   }
 
-  const channel = doc.querySelector('channel');
+  const channel = doc.querySelector('channel')
   if (!channel) {
-    const error = new Error('invalidRss');
-    error.key = 'invalidRss';
-    throw error;
+    const error = new Error('invalidRss')
+    error.key = 'invalidRss'
+    throw error
   }
 
-  const title = channel.querySelector('title')?.textContent || '';
-  const description = channel.querySelector('description')?.textContent || '';
+  const title = channel.querySelector('title')?.textContent || ''
+  const description = channel.querySelector('description')?.textContent || ''
 
-  const items = Array.from(channel.querySelectorAll('item'));
+  const items = Array.from(channel.querySelectorAll('item'))
   const posts = items.map((item) => ({
     id: generateId(),
     title: item.querySelector('title')?.textContent || '',
     description: item.querySelector('description')?.textContent || '',
     link: item.querySelector('link')?.textContent || '',
     feedId: feedUrl,
-  }));
+  }))
 
   return {
     feed: {
@@ -99,74 +98,74 @@ const parseRss = (xmlString, feedUrl) => {
       url: feedUrl,
     },
     posts,
-  };
-};
+  }
+}
 
 const getRssContent = (url) => {
-  const proxyUrl = 'https://allorigins.hexlet.app/get';
-  const encodedUrl = encodeURIComponent(url);
+  const proxyUrl = 'https://allorigins.hexlet.app/get'
+  const encodedUrl = encodeURIComponent(url)
 
   return axios.get(`${proxyUrl}?url=${encodedUrl}&disableCache=true`)
     .then((response) => {
       if (!response.data || !response.data.contents) {
-        const error = new Error('invalidRss');
-        error.key = 'invalidRss';
-        throw error;
+        const error = new Error('invalidRss')
+        error.key = 'invalidRss'
+        throw error
       }
-      return parseRss(response.data.contents, url);
+      return parseRss(response.data.contents, url)
     })
     .catch((error) => {
       if (error.key === 'invalidRss') {
-        throw error;
+        throw error
       }
-      const networkError = new Error('networkError');
-      networkError.key = 'networkError';
-      throw networkError;
-    });
-};
+      const networkError = new Error('networkError')
+      networkError.key = 'networkError'
+      throw networkError
+    })
+}
 
 // ========== UPDATE FEEDS ==========
 const addFeed = (url) => {
-  state.loading = true;
-  state.error = null;
+  state.loading = true
+  state.error = null
 
   return getRssContent(url)
     .then(({ feed, posts }) => {
-      state.feeds = [...state.feeds, feed];
+      state.feeds = [...state.feeds, feed]
 
       const newPosts = posts.filter((post) =>
         !state.posts.some((existing) => existing.link === post.link),
-      );
-      state.posts = [...state.posts, ...newPosts];
+      )
+      state.posts = [...state.posts, ...newPosts]
 
-      state.loading = false;
-      state.form.value = '';
-      state.form.isValid = true;
-      state.form.errorKey = null;
+      state.loading = false
+      state.form.value = ''
+      state.form.isValid = true
+      state.form.errorKey = null
 
-      const feedbackDiv = document.querySelector('.feedback');
+      const feedbackDiv = document.querySelector('.feedback')
       if (feedbackDiv) {
-        feedbackDiv.textContent = i18next.t('success');
-        feedbackDiv.classList.remove('invalid-feedback');
-        feedbackDiv.classList.add('text-success');
-        feedbackDiv.style.display = 'block';
+        feedbackDiv.textContent = i18next.t('success')
+        feedbackDiv.classList.remove('invalid-feedback')
+        feedbackDiv.classList.add('text-success')
+        feedbackDiv.style.display = 'block'
 
         setTimeout(() => {
           if (feedbackDiv.textContent === i18next.t('success')) {
-            feedbackDiv.textContent = '';
-            feedbackDiv.classList.remove('text-success');
-            feedbackDiv.style.display = '';
+            feedbackDiv.textContent = ''
+            feedbackDiv.classList.remove('text-success')
+            feedbackDiv.style.display = ''
           }
-        }, 3000);
+        }, 3000)
       }
     })
     .catch((err) => {
-      state.loading = false;
-      state.form.isValid = false;
-      state.form.errorKey = err.key || 'networkError';
-      throw err;
-    });
-};
+      state.loading = false
+      state.form.isValid = false
+      state.form.errorKey = err.key || 'networkError'
+      throw err
+    })
+}
 
 // ========== POLLING UPDATES ==========
 const updateFeedPosts = (feedUrl) => {
@@ -174,56 +173,56 @@ const updateFeedPosts = (feedUrl) => {
     .then(({ posts }) => {
       const newPosts = posts.filter((post) =>
         !state.posts.some((existing) => existing.link === post.link),
-      );
+      )
       if (newPosts.length > 0) {
-        state.posts = [...state.posts, ...newPosts];
+        state.posts = [...state.posts, ...newPosts]
       }
     })
     .catch((err) => {
-      console.error(`Error updating feed ${feedUrl}:`, err);
-    });
-};
+      console.error(`Error updating feed ${feedUrl}:`, err)
+    })
+}
 
 const scheduleUpdates = () => {
   const checkAllFeeds = () => {
     if (state.feeds.length === 0) {
-      setTimeout(checkAllFeeds, 5000);
-      return;
+      setTimeout(checkAllFeeds, 5000)
+      return
     }
 
-    const feedUrls = state.feeds.map((feed) => feed.url);
+    const feedUrls = state.feeds.map((feed) => feed.url)
     Promise.all(feedUrls.map(updateFeedPosts))
       .finally(() => {
-        setTimeout(checkAllFeeds, 5000);
-      });
-  };
+        setTimeout(checkAllFeeds, 5000)
+      })
+  }
 
-  setTimeout(checkAllFeeds, 5000);
-};
+  setTimeout(checkAllFeeds, 5000)
+}
 
 // ========== MARK POST AS READ ==========
 const markPostAsRead = (postId) => {
-  state.readPostIds = new Set(state.readPostIds).add(postId);
-};
+  state.readPostIds = new Set(state.readPostIds).add(postId)
+}
 
 // ========== RENDER FUNCTIONS ==========
 const escapeHtml = (str) => {
-  if (!str) return '';
+  if (!str) return ''
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-};
+    .replace(/'/g, '&#39;')
+}
 
 const renderFeeds = () => {
-  const container = document.querySelector('.feeds');
-  if (!container) return;
+  const container = document.querySelector('.feeds')
+  if (!container) return
 
   if (state.feeds.length === 0) {
-    container.innerHTML = '';
-    return;
+    container.innerHTML = ''
+    return
   }
 
   const feedsHtml = `
@@ -240,18 +239,18 @@ const renderFeeds = () => {
         `).join('')}
       </div>
     </div>
-  `;
+  `
 
-  container.innerHTML = feedsHtml;
-};
+  container.innerHTML = feedsHtml
+}
 
 const renderPosts = () => {
-  const container = document.querySelector('.posts');
-  if (!container) return;
+  const container = document.querySelector('.posts')
+  if (!container) return
 
   if (state.posts.length === 0) {
-    container.innerHTML = '';
-    return;
+    container.innerHTML = ''
+    return
   }
 
   const postsHtml = `
@@ -281,179 +280,179 @@ const renderPosts = () => {
         </ul>
       </div>
     </div>
-  `;
+  `
 
-  container.innerHTML = postsHtml;
+  container.innerHTML = postsHtml
 
   document.querySelectorAll('.view-post-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const postId = btn.dataset.postId;
-      const title = btn.dataset.postTitle;
-      const description = btn.dataset.postDescription;
-      const link = btn.dataset.postLink;
+      const postId = btn.dataset.postId
+      const title = btn.dataset.postTitle
+      const description = btn.dataset.postDescription
+      const link = btn.dataset.postLink
 
-      markPostAsRead(postId);
-      renderPosts();
+      markPostAsRead(postId)
+      renderPosts()
 
-      const modalElement = document.getElementById('modal');
+      const modalElement = document.getElementById('modal')
       if (modalElement) {
-        document.querySelector('#modal-title').textContent = title;
-        document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
-        document.querySelector('#modal-full-link').href = link;
+        document.querySelector('#modal-title').textContent = title
+        document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText')
+        document.querySelector('#modal-full-link').href = link
 
-        modalElement.style.display = 'block';
-        modalElement.classList.add('show');
-        document.body.classList.add('modal-open');
+        modalElement.style.display = 'block'
+        modalElement.classList.add('show')
+        document.body.classList.add('modal-open')
 
-        let backdrop = document.querySelector('.modal-backdrop');
+        let backdrop = document.querySelector('.modal-backdrop')
         if (!backdrop) {
-          backdrop = document.createElement('div');
-          backdrop.className = 'modal-backdrop fade show';
-          document.body.appendChild(backdrop);
+          backdrop = document.createElement('div')
+          backdrop.className = 'modal-backdrop fade show'
+          document.body.appendChild(backdrop)
         }
 
         const closeModal = () => {
-          modalElement.style.display = '';
-          modalElement.classList.remove('show');
-          document.body.classList.remove('modal-open');
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-        };
-
-        const closeButton = modalElement.querySelector('[data-bs-dismiss="modal"]');
-        if (closeButton) {
-          closeButton.removeEventListener('click', closeModal);
-          closeButton.addEventListener('click', closeModal);
+          modalElement.style.display = ''
+          modalElement.classList.remove('show')
+          document.body.classList.remove('modal-open')
+          const backdrop = document.querySelector('.modal-backdrop')
+          if (backdrop) backdrop.remove()
         }
 
-        backdrop?.addEventListener('click', closeModal);
-        modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation());
+        const closeButton = modalElement.querySelector('[data-bs-dismiss="modal"]')
+        if (closeButton) {
+          closeButton.removeEventListener('click', closeModal)
+          closeButton.addEventListener('click', closeModal)
+        }
+
+        backdrop?.addEventListener('click', closeModal)
+        modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation())
       }
-    });
-  });
-};
+    })
+  })
+}
 
 const setError = (errorKey) => {
-  const input = document.querySelector('#rss-input');
-  const feedback = document.querySelector('.feedback');
-  const message = i18next.t(errorKey);
+  const input = document.querySelector('#rss-input')
+  const feedback = document.querySelector('.feedback')
+  const message = i18next.t(errorKey)
 
   if (feedback) {
-    feedback.textContent = message;
-    feedback.classList.add('invalid-feedback');
-    feedback.classList.remove('text-success');
-    feedback.style.setProperty('display', 'block', 'important');
-    feedback.style.visibility = 'visible';
-    feedback.style.opacity = '1';
+    feedback.textContent = message
+    feedback.classList.add('invalid-feedback')
+    feedback.classList.remove('text-success')
+    feedback.style.setProperty('display', 'block', 'important')
+    feedback.style.visibility = 'visible'
+    feedback.style.opacity = '1'
   }
   else {
-    const container = document.querySelector('#rss-form');
+    const container = document.querySelector('#rss-form')
     if (container) {
-      const newFeedback = document.createElement('div');
-      newFeedback.className = 'feedback invalid-feedback';
-      newFeedback.textContent = message;
-      newFeedback.style.setProperty('display', 'block', 'important');
-      container.appendChild(newFeedback);
+      const newFeedback = document.createElement('div')
+      newFeedback.className = 'feedback invalid-feedback'
+      newFeedback.textContent = message
+      newFeedback.style.setProperty('display', 'block', 'important')
+      container.appendChild(newFeedback)
     }
   }
   if (input) {
-    input.classList.add('is-invalid');
+    input.classList.add('is-invalid')
   }
-};
+}
 
 const clearFeedback = () => {
-  const input = document.querySelector('#rss-input');
-  const feedback = document.querySelector('.feedback');
+  const input = document.querySelector('#rss-input')
+  const feedback = document.querySelector('.feedback')
 
   if (feedback) {
-    feedback.textContent = '';
-    feedback.classList.remove('invalid-feedback', 'text-success');
-    feedback.style.display = '';
-    feedback.style.visibility = '';
-    feedback.style.opacity = '';
+    feedback.textContent = ''
+    feedback.classList.remove('invalid-feedback', 'text-success')
+    feedback.style.display = ''
+    feedback.style.visibility = ''
+    feedback.style.opacity = ''
   }
   if (input) {
-    input.classList.remove('is-invalid');
+    input.classList.remove('is-invalid')
   }
-};
+}
 
 // ========== FORM HANDLER ==========
 const initForm = () => {
-  const form = document.querySelector('#rss-form');
-  const input = document.querySelector('#rss-input');
+  const form = document.querySelector('#rss-form')
+  const input = document.querySelector('#rss-input')
 
   form.addEventListener('submit', (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    const url = input.value.trim();
+    const url = input.value.trim()
     if (!url) {
-      setError('empty');
-      return;
+      setError('empty')
+      return
     }
 
-    let isValidUrl = true;
+    let isValidUrl = true
     try {
-      new URL(url);
+      new URL(url)
     }
     catch {
-      isValidUrl = false;
+      isValidUrl = false
     }
 
     if (!isValidUrl) {
-      setError('invalidUrl');
-      return;
+      setError('invalidUrl')
+      return
     }
 
     if (state.feeds.some((feed) => feed.url === url)) {
-      setError('duplicate');
-      return;
+      setError('duplicate')
+      return
     }
 
     addFeed(url)
       .then(() => {
-        clearFeedback();
-        renderFeeds();
-        renderPosts();
-        input.value = '';
-        input.focus();
+        clearFeedback()
+        renderFeeds()
+        renderPosts()
+        input.value = ''
+        input.focus()
 
-        const feedbackDiv = document.querySelector('.feedback');
+        const feedbackDiv = document.querySelector('.feedback')
         if (feedbackDiv) {
-          feedbackDiv.textContent = i18next.t('success');
-          feedbackDiv.classList.add('text-success');
-          feedbackDiv.style.display = 'block';
+          feedbackDiv.textContent = i18next.t('success')
+          feedbackDiv.classList.add('text-success')
+          feedbackDiv.style.display = 'block'
         }
 
         setTimeout(() => {
           if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
-            feedbackDiv.textContent = '';
-            feedbackDiv.classList.remove('text-success');
-            feedbackDiv.style.display = '';
+            feedbackDiv.textContent = ''
+            feedbackDiv.classList.remove('text-success')
+            feedbackDiv.style.display = ''
           }
-        }, 3000);
+        }, 3000)
       })
       .catch((err) => {
-        setError(err.key);
-      });
-  });
+        setError(err.key)
+      })
+  })
 
   input.addEventListener('input', () => {
-    clearFeedback();
-  });
-};
+    clearFeedback()
+  })
+}
 
 // ========== INITIALIZE ==========
 document.addEventListener('DOMContentLoaded', () => {
-  initForm();
-  renderFeeds();
-  renderPosts();
+  initForm()
+  renderFeeds()
+  renderPosts()
 
   subscribe(state, () => {
-    renderFeeds();
-    renderPosts();
-  });
+    renderFeeds()
+    renderPosts()
+  })
 
-  scheduleUpdates();
+  scheduleUpdates()
 
-  window.state = state;
-});
+  window.state = state
+})
