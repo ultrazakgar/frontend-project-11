@@ -82,7 +82,7 @@ const parseRss = (xmlString, feedUrl) => {
   const description = channel.querySelector('description')?.textContent || ''
 
   const items = Array.from(channel.querySelectorAll('item'))
-  const posts = items.map(item => ({
+  const posts = items.map((item) => ({
     id: generateId(),
     title: item.querySelector('title')?.textContent || '',
     description: item.querySelector('description')?.textContent || '',
@@ -106,7 +106,7 @@ const getRssContent = (url) => {
   const encodedUrl = encodeURIComponent(url)
 
   return axios.get(`${proxyUrl}?url=${encodedUrl}&disableCache=true`)
-    .then(response => {
+    .then((response) => {
       if (!response.data || !response.data.contents) {
         const error = new Error('invalidRss')
         error.key = 'invalidRss'
@@ -114,7 +114,7 @@ const getRssContent = (url) => {
       }
       return parseRss(response.data.contents, url)
     })
-    .catch(error => {
+    .catch((error) => {
       if (error.key === 'invalidRss') {
         throw error
       }
@@ -133,8 +133,8 @@ const addFeed = (url) => {
     .then(({ feed, posts }) => {
       state.feeds = [...state.feeds, feed]
 
-      const newPosts = posts.filter(post =>
-        !state.posts.some(existing => existing.link === post.link),
+      const newPosts = posts.filter((post) =>
+        !state.posts.some((existing) => existing.link === post.link),
       )
       state.posts = [...state.posts, ...newPosts]
 
@@ -159,7 +159,7 @@ const addFeed = (url) => {
         }, 3000)
       }
     })
-    .catch(err => {
+    .catch((err) => {
       state.loading = false
       state.form.isValid = false
       state.form.errorKey = err.key || 'networkError'
@@ -171,14 +171,14 @@ const addFeed = (url) => {
 const updateFeedPosts = (feedUrl) => {
   return getRssContent(feedUrl)
     .then(({ posts }) => {
-      const newPosts = posts.filter(post =>
-        !state.posts.some(existing => existing.link === post.link),
+      const newPosts = posts.filter((post) =>
+        !state.posts.some((existing) => existing.link === post.link),
       )
       if (newPosts.length > 0) {
         state.posts = [...state.posts, ...newPosts]
       }
     })
-    .catch(err => {
+    .catch((err) => {
       console.error(`Error updating feed ${feedUrl}:`, err)
     })
 }
@@ -190,7 +190,7 @@ const scheduleUpdates = () => {
       return
     }
 
-    const feedUrls = state.feeds.map(feed => feed.url)
+    const feedUrls = state.feeds.map((feed) => feed.url)
     Promise.all(feedUrls.map(updateFeedPosts))
       .finally(() => {
         setTimeout(checkAllFeeds, 5000)
@@ -231,7 +231,7 @@ const renderFeeds = () => {
         <h2>${i18next.t('feedsTitle')}</h2>
       </div>
       <div class="card-body">
-        ${state.feeds.map(feed => `
+        ${state.feeds.map((feed) => `
           <div class="mb-3">
             <h3>${escapeHtml(feed.title)}</h3>
             <p>${escapeHtml(feed.description)}</p>
@@ -260,7 +260,7 @@ const renderPosts = () => {
       </div>
       <div class="card-body">
         <ul class="list-group">
-          ${state.posts.map(post => `
+          ${state.posts.map((post) => `
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <a href="${escapeHtml(post.link)}"
                  target="_blank"
@@ -284,7 +284,7 @@ const renderPosts = () => {
 
   container.innerHTML = postsHtml
 
-  document.querySelectorAll('.view-post-btn').forEach(btn => {
+  document.querySelectorAll('.view-post-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const postId = btn.dataset.postId
       const title = btn.dataset.postTitle
@@ -326,7 +326,7 @@ const renderPosts = () => {
         }
 
         backdrop?.addEventListener('click', closeModal)
-        modalElement.querySelector('.modal-content')?.addEventListener('click', e => e.stopPropagation())
+        modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation())
       }
     })
   })
@@ -401,7 +401,7 @@ const initForm = () => {
       return
     }
 
-    if (state.feeds.some(feed => feed.url === url)) {
+    if (state.feeds.some((feed) => feed.url === url)) {
       setError('duplicate')
       return
     }
@@ -429,7 +429,7 @@ const initForm = () => {
           }
         }, 3000)
       })
-      .catch(err => {
+      .catch((err) => {
         setError(err.key)
       })
   })
