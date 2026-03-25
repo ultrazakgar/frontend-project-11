@@ -137,13 +137,16 @@ const validateUrl = (url, existingFeeds) => {
       return true;
     })
     .catch(err => {
+      // If it's duplicate error
       if (err.key === 'duplicate') {
         throw { key: 'duplicate' };
       }
+      // If it's Yup validation error
       if (err.errors && err.errors[0]) {
         const errorKey = err.errors[0].key || 'invalidUrl';
         throw { key: errorKey };
       }
+      // Any other error - treat as invalid URL
       throw { key: 'invalidUrl' };
     });
 };
@@ -312,11 +315,16 @@ const renderPosts = () => {
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
-        document.querySelector('#modal-title').textContent = title;
-        document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
-        document.querySelector('#modal-full-link').href = link;
-        modal.show();
+        // Make sure Bootstrap is loaded
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+          const modal = new bootstrap.Modal(modalElement);
+          document.querySelector('#modal-title').textContent = title;
+          document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
+          document.querySelector('#modal-full-link').href = link;
+          modal.show();
+        } else {
+          console.error('Bootstrap Modal not available');
+        }
       }
     });
   });
