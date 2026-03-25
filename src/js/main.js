@@ -171,7 +171,7 @@ const addFeed = (url) => {
 const updateFeedPosts = (feedUrl) => {
   return getRssContent(feedUrl)
     .then(({ posts }) => {
-      const newPosts = posts.filter((post) =>
+      const newPosts = posts.filter(post =>
         !state.posts.some(existing => existing.link === post.link),
       )
       if (newPosts.length > 0) {
