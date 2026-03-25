@@ -170,7 +170,7 @@ const addFeed = (url) => {
 // ========== POLLING UPDATES ==========
 const updateFeedPosts = (feedUrl) => {
   return getRssContent(feedUrl)
-    .then({ posts } => {
+    .then({ posts }) => {
       const newPosts = posts.filter((post) =>
         !state.posts.some(existing => existing.link === post.link),
       )
