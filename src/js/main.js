@@ -153,14 +153,13 @@ const addFeed = (url) => {
       state.form.isValid = true;
       state.form.errorKey = null;
       
-      const successDiv = document.createElement('div');
-      successDiv.className = 'alert alert-success alert-dismissible fade show';
-      successDiv.role = 'alert';
-      successDiv.textContent = i18next.t('success');
-      successDiv.innerHTML += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-      document.querySelector('#rss-form').after(successDiv);
-      
-      setTimeout(() => successDiv.remove(), 3000);
+      const feedbackDiv = document.querySelector('.feedback');
+      feedbackDiv.textContent = i18next.t('success');
+      feedbackDiv.classList.add('text-success');
+      setTimeout(() => {
+        feedbackDiv.textContent = '';
+        feedbackDiv.classList.remove('text-success');
+      }, 3000);
     })
     .catch(err => {
       state.loading = false;
@@ -209,8 +208,18 @@ const markPostAsRead = (postId) => {
 };
 
 // ========== RENDER FUNCTIONS ==========
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const renderFeeds = () => {
-  const container = document.querySelector('#feeds-container');
+  const container = document.querySelector('.feeds');
   if (!container) return;
   
   if (state.feeds.length === 0) {
@@ -219,8 +228,8 @@ const renderFeeds = () => {
   }
   
   const feedsHtml = `
-    <div class="card mb-4">
-      <div class="card-header">
+    <div class="card border-primary mb-3">
+      <div class="card-header bg-primary text-white">
         <h2>${i18next.t('feedsTitle')}</h2>
       </div>
       <div class="card-body">
@@ -238,7 +247,7 @@ const renderFeeds = () => {
 };
 
 const renderPosts = () => {
-  const container = document.querySelector('#posts-container');
+  const container = document.querySelector('.posts');
   if (!container) return;
   
   if (state.posts.length === 0) {
@@ -247,8 +256,8 @@ const renderPosts = () => {
   }
   
   const postsHtml = `
-    <div class="card">
-      <div class="card-header">
+    <div class="card border-primary">
+      <div class="card-header bg-primary text-white">
         <h2>${i18next.t('postsTitle')}</h2>
       </div>
       <div class="card-body">
@@ -296,26 +305,18 @@ const renderPosts = () => {
   });
 };
 
-const escapeHtml = (str) => {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-};
-
 const renderFormError = () => {
   const input = document.querySelector('#rss-input');
-  const feedback = document.querySelector('#rss-feedback');
+  const feedback = document.querySelector('.feedback');
   
   if (!state.form.isValid && state.form.errorKey) {
     input.classList.add('is-invalid');
     feedback.textContent = i18next.t(state.form.errorKey);
+    feedback.classList.add('invalid-feedback');
   } else {
     input.classList.remove('is-invalid');
     feedback.textContent = '';
+    feedback.classList.remove('invalid-feedback');
   }
 };
 
@@ -323,7 +324,6 @@ const renderFormError = () => {
 const initForm = () => {
   const form = document.querySelector('#rss-form');
   const input = document.querySelector('#rss-input');
-  const submitBtn = document.querySelector('#rss-submit');
   
   form.addEventListener('submit', (e) => {
     e.preventDefault();
