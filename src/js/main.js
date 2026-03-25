@@ -318,11 +318,13 @@ const renderPosts = () => {
       renderPosts();
       
       const modalElement = document.getElementById('modal');
-      const modal = new bootstrap.Modal(modalElement);
-      document.querySelector('#modal-title').textContent = title;
-      document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
-      document.querySelector('#modal-full-link').href = link;
-      modal.show();
+      if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        document.querySelector('#modal-title').textContent = title;
+        document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
+        document.querySelector('#modal-full-link').href = link;
+        modal.show();
+      }
     });
   });
 };
