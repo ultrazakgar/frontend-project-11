@@ -148,11 +148,13 @@ const addFeed = (url) => {
         feedbackDiv.textContent = i18next.t('success');
         feedbackDiv.classList.remove('invalid-feedback');
         feedbackDiv.classList.add('text-success');
+        feedbackDiv.style.display = 'block';
         
         setTimeout(() => {
           if (feedbackDiv.textContent === i18next.t('success')) {
             feedbackDiv.textContent = '';
             feedbackDiv.classList.remove('text-success');
+            feedbackDiv.style.display = '';
           }
         }, 3000);
       }
@@ -282,6 +284,7 @@ const renderPosts = () => {
   
   container.innerHTML = postsHtml;
   
+  // Manual modal handling
   document.querySelectorAll('.view-post-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const postId = btn.dataset.postId;
@@ -290,27 +293,48 @@ const renderPosts = () => {
       const link = btn.dataset.postLink;
       
       markPostAsRead(postId);
-      renderPosts();
+      renderPosts(); // re-render to update bold/normal styles
       
       const modalElement = document.getElementById('modal');
       if (modalElement) {
-        // Set content
+        // Fill content
         document.querySelector('#modal-title').textContent = title;
         document.querySelector('#modal-description').textContent = description || i18next.t('modalExampleText');
         document.querySelector('#modal-full-link').href = link;
         
-        // Force modal to be visible (direct DOM manipulation)
+        // Manually show modal
         modalElement.style.display = 'block';
         modalElement.classList.add('show');
         document.body.classList.add('modal-open');
         
-        // Add backdrop if not present
+        // Add backdrop if not exists
         let backdrop = document.querySelector('.modal-backdrop');
         if (!backdrop) {
           backdrop = document.createElement('div');
           backdrop.className = 'modal-backdrop fade show';
           document.body.appendChild(backdrop);
         }
+        
+        // Close modal when clicking on close button or backdrop
+        const closeModal = () => {
+          modalElement.style.display = '';
+          modalElement.classList.remove('show');
+          document.body.classList.remove('modal-open');
+          const backdrop = document.querySelector('.modal-backdrop');
+          if (backdrop) backdrop.remove();
+        };
+        
+        const closeButton = modalElement.querySelector('[data-bs-dismiss="modal"]');
+        if (closeButton) {
+          closeButton.removeEventListener('click', closeModal);
+          closeButton.addEventListener('click', closeModal);
+        }
+        
+        // Close on backdrop click
+        backdrop?.addEventListener('click', closeModal);
+        
+        // Prevent closing when clicking inside modal content
+        modalElement.querySelector('.modal-content')?.addEventListener('click', (e) => e.stopPropagation());
       }
     });
   });
@@ -325,7 +349,7 @@ const setError = (errorKey) => {
     feedback.textContent = message;
     feedback.classList.add('invalid-feedback');
     feedback.classList.remove('text-success');
-    feedback.style.display = 'block';
+    feedback.style.display = 'block'; // ensure visible
   }
   if (input) {
     input.classList.add('is-invalid');
@@ -354,6 +378,8 @@ const initForm = () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
+    // Only clear previous feedback if we are about to show new one
+    // But we must clear before showing new error to avoid old messages
     clearFeedback();
     
     const url = input.value.trim();
@@ -362,7 +388,7 @@ const initForm = () => {
       return;
     }
     
-    // Validate URL using native URL constructor (synchronous, reliable)
+    // Validate URL using native URL constructor (reliable)
     let isValidUrl = true;
     try {
       new URL(url);
@@ -375,7 +401,7 @@ const initForm = () => {
       return;
     }
     
-    // Check duplicate
+    // Duplicate check
     if (state.feeds.some(feed => feed.url === url)) {
       setError('duplicate');
       return;
@@ -394,12 +420,14 @@ const initForm = () => {
         if (feedbackDiv) {
           feedbackDiv.textContent = i18next.t('success');
           feedbackDiv.classList.add('text-success');
+          feedbackDiv.style.display = 'block';
         }
         
         setTimeout(() => {
           if (feedbackDiv && feedbackDiv.textContent === i18next.t('success')) {
             feedbackDiv.textContent = '';
             feedbackDiv.classList.remove('text-success');
+            feedbackDiv.style.display = '';
           }
         }, 3000);
       })
